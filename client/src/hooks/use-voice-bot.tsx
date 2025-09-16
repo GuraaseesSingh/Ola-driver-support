@@ -92,8 +92,6 @@ export function useVoiceBot() {
       }
 
       setSessionStartTime(new Date());
-      setIsConnected(true);
-      setConnectionStatus('LiveKit Connected');
       setVoiceStatus('Ready to listen');
       setStatusMessage('Press microphone to start');
 
@@ -130,22 +128,39 @@ export function useVoiceBot() {
       const sessionData = await response.json();
       currentSessionId.current = sessionData.sessionId;
 
-      // Get LiveKit token
-      const token = await liveKitService.getRoomToken(sessionData.roomName);
+      // Check if LiveKit is configured before attempting connection
+      const liveKitUrl = import.meta.env.VITE_LIVEKIT_URL;
+      
+      if (liveKitUrl && liveKitUrl !== 'undefined') {
+        // Try to connect to LiveKit only if properly configured
+        try {
+          const token = await liveKitService.getRoomToken(sessionData.roomName);
+          await liveKitService.connect({
+            url: liveKitUrl,
+            token
+          });
 
-      // Connect to LiveKit room  
-      await liveKitService.connect({
-        url: import.meta.env.VITE_LIVEKIT_URL || 'ws://localhost:7880',
-        token
-      });
-
-      liveKitService.setOnConnectionStatusChanged((connected) => {
-        setIsConnected(connected);
-        setConnectionStatus(connected ? 'LiveKit Connected' : 'Disconnected');
-      });
+          liveKitService.setOnConnectionStatusChanged((connected) => {
+            setIsConnected(connected);
+            setConnectionStatus(connected ? 'LiveKit Connected' : 'Disconnected');
+          });
+          
+          console.log('LiveKit connected successfully');
+        } catch (liveKitError) {
+          console.warn('LiveKit connection failed, using Web Speech API only:', liveKitError);
+          // Continue without LiveKit - use direct speech API
+          setIsConnected(true);
+          setConnectionStatus('Web Speech API Ready');
+        }
+      } else {
+        console.log('LiveKit not configured, using Web Speech API only');
+        // Skip LiveKit entirely and use Web Speech API
+        setIsConnected(true);
+        setConnectionStatus('Web Speech API Ready');
+      }
 
     } catch (error) {
-      console.error('LiveKit initialization failed:', error);
+      console.error('Session initialization failed:', error);
       throw error;
     }
   };
@@ -228,9 +243,10 @@ export function useVoiceBot() {
 
       } catch (error) {
         console.error('Error processing speech:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         toast({
           title: "Processing Error",
-          description: "Failed to process your speech. Please try again.",
+          description: `Failed to process your speech: ${error instanceof Error ? error.message : 'Unknown error'}`,
           variant: "destructive",
         });
         
@@ -278,12 +294,22 @@ export function useVoiceBot() {
     try {
       if (isRecording) {
         speechService.stopListening();
-        await liveKitService.stopAudioTransmission();
+        // Try LiveKit if available, but don't fail if not
+        try {
+          await liveKitService.stopAudioTransmission();
+        } catch (e) {
+          console.log('LiveKit not available for audio stop');
+        }
         setIsRecording(false);
         setVoiceStatus('Ready to listen');
         setStatusMessage('Press microphone to start');
       } else {
-        await liveKitService.startAudioTransmission();
+        // Try LiveKit if available, but don't fail if not
+        try {
+          await liveKitService.startAudioTransmission();
+        } catch (e) {
+          console.log('LiveKit not available for audio start, using Web Speech API only');
+        }
         await speechService.startListening();
         setIsRecording(true);
         setVoiceStatus('Recording...');

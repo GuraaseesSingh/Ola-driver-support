@@ -50,6 +50,11 @@ export class LiveKitService {
       throw new Error('Room not initialized');
     }
 
+    // Check if LiveKit URL is properly configured
+    if (!config.url || config.url.includes('undefined') || !config.token) {
+      throw new Error('LiveKit configuration is incomplete or invalid');
+    }
+
     try {
       await this.room.connect(config.url, config.token);
     } catch (error) {
@@ -124,10 +129,15 @@ export class LiveKitService {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get room token');
+        const errorText = await response.text();
+        throw new Error(`Failed to get token: ${response.status} - ${errorText}`);
       }
 
       const data = await response.json();
+      if (!data.token) {
+        throw new Error('No token received from server');
+      }
+      
       return data.token;
     } catch (error) {
       console.error('Failed to get LiveKit token:', error);

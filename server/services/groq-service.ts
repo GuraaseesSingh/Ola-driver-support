@@ -35,7 +35,7 @@ interface GroqChatResponse {
 export class GroqService {
   private apiKey: string;
   private baseUrl: string = 'https://api.groq.com/openai/v1';
-  private defaultModel: string = 'llama-3.1-70b-versatile';
+  private defaultModel: string = 'llama-3.1-8b-instant';
 
   constructor() {
     this.apiKey = process.env.GROQ_API_KEY || process.env.GROQ_CLOUD_API_KEY || '';
@@ -143,8 +143,8 @@ export class GroqService {
 
   getAvailableModels(): string[] {
     return [
-      'llama-3.1-70b-versatile',
       'llama-3.1-8b-instant',
+      'llama-3.1-70b-versatile', // deprecated but kept for reference
       'mixtral-8x7b-32768',
       'gemma-7b-it',
     ];
