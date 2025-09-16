@@ -116,6 +116,8 @@ export function useVoiceBot() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId: null,
+          roomName: `ola-support-${Date.now()}`,
           scenario: 'driver_support',
           language: 'hindi'
         }),
@@ -131,9 +133,9 @@ export function useVoiceBot() {
       // Get LiveKit token
       const token = await liveKitService.getRoomToken(sessionData.roomName);
 
-      // Connect to LiveKit room
+      // Connect to LiveKit room  
       await liveKitService.connect({
-        url: process.env.VITE_LIVEKIT_URL || 'ws://localhost:7880',
+        url: import.meta.env.VITE_LIVEKIT_URL || 'ws://localhost:7880',
         token
       });
 
